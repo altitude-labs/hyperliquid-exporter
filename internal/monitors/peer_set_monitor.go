@@ -37,8 +37,8 @@ var (
 
 // StartPeerSetMonitor publishes the windowed unique-peer counts always,
 // and (when --per-peer-metrics is set) the per-IP last-seen + first-seen
-// gauges. The set itself is fed from other monitors (tcp_traffic for
-// now); this monitor is the publisher, not the producer.
+// gauges. The set itself is fed from tcp_traffic and structured gossip
+// events; this monitor is the publisher, not the producer.
 func StartPeerSetMonitor(ctx context.Context, cfg config.Config, errCh chan<- error) {
 	logger.InfoComponent("peer_set", "publishing peer-set metrics; per-peer-metrics=%v", cfg.EnablePerPeerMetrics)
 

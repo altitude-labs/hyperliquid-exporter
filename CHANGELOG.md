@@ -10,6 +10,7 @@
 
 - Added `hl_core_orders_per_block`, a replica-driven histogram for orders per block.
 - Added the always-on `mempool_txs` monitor for split-client-blocks data under `data/mempool_txs/hourly/`, exposing aggregate `hl_mempool_txs_*` counters, histograms, and freshness gauges without raw order-flow labels.
+- Added `hl_p2p_gossip_peer_events_total{ip,event_type}` under `--per-peer-metrics` for bounded per-IP gossip attribution, plus always-on `hl_p2p_gossip_events_unattributed_total{event_type}` to surface payloads that cannot be safely attributed. Structured gossip IPs now also feed the shared peer set.
 
 ### Changed (BREAKING)
 

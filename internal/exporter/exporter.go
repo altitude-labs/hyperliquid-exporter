@@ -138,7 +138,8 @@ func Start(ctx context.Context, cfg config.Config) {
 	runMonitor("tcp_traffic", func() { monitors.StartTCPTrafficMonitor(monitorCtx, cfg, tcpTrafficErrCh) })
 
 	// peer-set monitor (rolling windowed unique-peer counts; optional
-	// per-IP gauges under --per-peer-metrics). Fed by tcp_traffic.
+	// per-IP gauges under --per-peer-metrics). Fed by tcp_traffic and
+	// structured gossip events.
 	logger.InfoComponent("peer_set", "Initializing peer-set monitor...")
 	runMonitor("peer_set", func() { monitors.StartPeerSetMonitor(monitorCtx, cfg, peerSetErrCh) })
 

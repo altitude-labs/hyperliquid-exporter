@@ -24,7 +24,7 @@ OPTIONS:
   --metrics-port N          # Prometheus port (default 8086)
   --probe-info-endpoint     # Active HTTP probe of --serve-info
   --extended-metrics        # Extra monitors (lz4, logs, RocksDB, etc.)
-  --per-peer-metrics        # Per-IP peer first/last-seen gauges (LRU 2048, 24h TTL)
+  --per-peer-metrics        # Per-IP peer timestamps + gossip event counters (LRU 2048, 24h TTL)
   --skip-version-check      # For containerized deployments
   --skip-update-check       # For containerized deployments
   --otlp                    # Enable OTLP export (requires --alias and --otlp-endpoint)

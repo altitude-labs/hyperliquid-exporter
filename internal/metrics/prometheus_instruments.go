@@ -234,6 +234,14 @@ var (
 		Name: "hl_p2p_gossip_events_total",
 		Help: "Cumulative count of gossip-connection events emitted by hl-node, by event type.",
 	}, []string{"event_type"})
+	HLP2PGossipPeerEventsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "hl_p2p_gossip_peer_events_total",
+		Help: "Count of gossip-connection events attributed to a remote peer IP during its current active metric lifetime. Emitted only with --per-peer-metrics; active IP cardinality is LRU/TTL bounded.",
+	}, []string{"ip", "event_type"})
+	HLP2PGossipEventsUnattributedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "hl_p2p_gossip_events_unattributed_total",
+		Help: "Cumulative count of gossip-connection events whose structured payload did not contain a valid remote IP.",
+	}, []string{"event_type"})
 )
 
 // Disk-usage metrics (from internal/monitors/disk_monitor.go). NODE_HOME

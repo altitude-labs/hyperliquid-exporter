@@ -50,10 +50,9 @@ type Config struct {
 	// Useful for deep operator dashboards; off by default to keep the
 	// scrape lean for the median user.
 	EnableExtendedMetrics bool
-	// EnablePerPeerMetrics adds hl_p2p_peer_last_seen_seconds{ip} and
-	// hl_p2p_peer_first_seen_seconds{ip} per known peer. Cardinality
-	// bounded by the peer set's LRU cap (256) + TTL (24h). Off by
-	// default for operators with tight per-target series limits.
+	// EnablePerPeerMetrics adds per-IP first/last-seen gauges and gossip
+	// event counters. Cardinality is bounded by a 2048-IP LRU cap and a
+	// 24h TTL. Off by default for operators with tight series limits.
 	EnablePerPeerMetrics bool
 }
 

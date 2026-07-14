@@ -1,6 +1,6 @@
 # Hyperliquid Exporter Metrics Reference
 
-> **Legend - `_total` on Gauge-typed metrics:** Gauge-typed metrics whose names end in `_total` are cumulative-since-source-restart snapshots (or current counts), NOT Prometheus counters: they reset to 0 when the source process (hl-node/hl-visor) or the exporter restarts, and some are point-in-time counts that can DECREASE. Do not apply `rate()`/`increase()` to them; use the raw value, or `delta()`/`changes()` with awareness of resets. True counters (correctly consumed with `rate()`) are: `hl_info_endpoint_failures_total`, `hl_node_parent_peer_switches_total`, `hl_p2p_gossip_events_total`, `hl_node_public_ip_changes_total`, `hl_mempool_events_total`, `hl_mempool_txs_seen_total`, `hl_mempool_txs_bytes_total`, `hl_mempool_txs_signed_actions_total`, `hl_mempool_txs_operations_total`, `hl_mempool_txs_order_operations_total`.
+> **Legend - `_total` on Gauge-typed metrics:** Gauge-typed metrics whose names end in `_total` are cumulative-since-source-restart snapshots (or current counts), NOT Prometheus counters: they reset to 0 when the source process (hl-node/hl-visor) or the exporter restarts, and some are point-in-time counts that can DECREASE. Do not apply `rate()`/`increase()` to them; use the raw value, or `delta()`/`changes()` with awareness of resets. True counters (correctly consumed with `rate()`) include `hl_info_endpoint_failures_total`, `hl_node_parent_peer_switches_total`, the `hl_p2p_gossip_*_total` event counters, `hl_node_public_ip_changes_total`, `hl_mempool_events_total`, and the `hl_mempool_txs_*_total` counters.
 
 ## HyperCore Metrics
 
@@ -189,7 +189,34 @@ These expose node-precomputed per-node quantiles as gauges with no `_bucket` ser
 | `hl_node_parent_peer_tenure_seconds` | Gauge | - | Time current parent has held role | - |
 | `hl_node_parent_peer_switches_total` | Counter | - | Cumulative parent changes | - |
 | `hl_p2p_gossip_events_total` | Counter | `event_type` | Gossip events by tag | - |
+| `hl_p2p_gossip_peer_events_total` | Counter | `ip`, `event_type` | Gossip events attributed to a structured remote IP | `--per-peer-metrics` |
+| `hl_p2p_gossip_events_unattributed_total` | Counter | `event_type` | Gossip events whose structured payload did not contain a valid remote IP | - |
 | `hl_p2p_tcp_connections` | Gauge | `port`, `state` | TCP state counts per listening port | Linux only |
+
+`hl_p2p_gossip_peer_events_total` accepts only the bounded `event_type` allowlist documented by the exporter; unknown tags use `event_type="other"`. Active IPs are limited to 2048 with a 24-hour TTL. Evicting an IP deletes its active series, so a later reappearance is a normal counter reset that `rate()` and `increase()` handle. The parser accepts structured `Ip`, `ip`, `remote_ip`, and similar `*_ip` fields, but deliberately does not extract addresses from free-form error strings. Use Loki for exact event payloads and sub-scrape timing.
+
+Examples:
+
+```promql
+# Per-IP gossip-RPC activity over ten minutes.
+sum by (instance, ip) (
+  increase(hl_p2p_gossip_peer_events_total{event_type="verified_gossip_rpc"}[10m])
+)
+
+# Repeated stream setup/check failures by IP.
+sum by (instance, ip) (
+  increase(hl_p2p_gossip_peer_events_total{
+    event_type=~"handle_stream_connection|performing_checks_on_stream|got_tcp_greeting|error_checking_connection"
+  }[5m])
+)
+
+# Same remote IP active against multiple scraped nodes.
+count by (ip) (
+  sum by (instance, ip) (
+    increase(hl_p2p_gossip_peer_events_total[10m])
+  ) > 0
+)
+```
 
 ## Peer Set
 
@@ -205,7 +232,7 @@ These expose node-precomputed per-node quantiles as gauges with no `_bucket` ser
 | `hl_p2p_peers` | Gauge | - | Unique peer IPs with positive traffic in the latest tcp_traffic sample ("right now"). Point-in-time count (peers in the latest sample) that can DECREASE, so do not `rate()`/`increase()`. | - |
 | `hl_p2p_peers_added_total` | Counter | - | Cumulative new peers since exporter start. In-process monotonic (resets only on exporter restart), so `rate()`/`increase()` are valid. | - |
 | `hl_p2p_peers_evicted_total` | Counter | - | Cumulative evictions since exporter start. In-process monotonic (resets only on exporter restart), so `rate()`/`increase()` are valid. | - |
-| `hl_p2p_peer_last_seen_seconds` | Gauge | `ip` | Last-seen Unix timestamp per known peer IP | `--per-peer-metrics` |
+| `hl_p2p_peer_last_seen_seconds` | Gauge | `ip` | Last-seen Unix timestamp per known peer IP, from traffic or structured gossip events | `--per-peer-metrics` |
 | `hl_p2p_peer_first_seen_seconds` | Gauge | `ip` | First-seen Unix timestamp per known peer IP | `--per-peer-metrics` |
 
 ## Disk

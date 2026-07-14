@@ -1,7 +1,7 @@
 // Package peerset maintains a thread-safe, LRU+TTL-bounded set of peer
 // IPs the node has observed. Fed by monitors that parse per-peer
-// information (currently tcp_traffic_monitor); read by peer_set_monitor
-// for windowed-unique-count and per-IP metrics.
+// information (tcp_traffic and structured gossip events); read by
+// peer_set_monitor for windowed-unique-count and per-IP metrics.
 package peerset
 
 import (
