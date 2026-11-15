@@ -195,6 +195,7 @@ These expose node-precomputed per-node quantiles as gauges with no `_bucket` ser
 | `hl_p2p_tcp_bytes_total` | Counter | `ip`, `direction` | Observed TCP payload bytes since collection baseline, summed across P2P sockets by remote IP | Linux, `--per-peer-metrics` |
 | `hl_p2p_tcp_collection_success` | Gauge | - | Whether the latest complete TCP byte collection succeeded (1/0) | Linux, `--per-peer-metrics` |
 | `hl_p2p_tcp_last_success_seconds` | Gauge | - | Unix timestamp of the latest successful complete TCP byte collection | Linux, `--per-peer-metrics` |
+| `hl_p2p_tcp_observed_sockets` | Gauge | - | P2P sockets with byte counters in the latest successful dump; zero can mean no active peers or the wrong network namespace | Linux, `--per-peer-metrics` |
 
 `hl_p2p_gossip_peer_events_total` accepts only the bounded `event_type` allowlist documented by the exporter; unknown tags use `event_type="other"`. Active IPs are limited to 2048 with a 24-hour TTL. Evicting an IP deletes its active series, so a later reappearance is a normal counter reset that `rate()` and `increase()` handle. The parser accepts structured `Ip`, `ip`, `remote_ip`, and similar `*_ip` fields, but deliberately does not extract addresses from free-form error strings. Use Loki for exact event payloads and sub-scrape timing.
 
@@ -218,13 +219,24 @@ sum by (env, instance, ip) (
 ```
 
 The standalone `grafana/hyperliquid-p2p-traffic-dashboard.json` includes throughput
-curves, range volumes, a joined per-IP table and collection health. Failed or
-stale collection is shown as a gap in throughput curves, rather than a misleading
-zero. Configure Prometheus to scrape at approximately 15 seconds; allow at least
-two scrapes before expecting a rate.
+curves, range volumes, a joined per-IP table and collection health. Throughput
+queries use the byte counters directly; they do not impose a fixed freshness
+cutoff that depends on the scrape interval. Check collection health for failed
+polls; an unsuccessful poll leaves counters at their previous values until the
+next successful dump. Configure Prometheus to scrape at approximately 15 seconds;
+allow at least two scrapes before expecting a rate.
+
+Collection success only confirms a complete kernel dump, even when it contains
+zero P2P sockets. Check `hl_p2p_tcp_observed_sockets` to distinguish a working
+socket dump from actual peer visibility. The dashboard shows **No P2P sockets**
+for successful but empty dumps, **Collecting** when sockets are visible,
+and **Incomplete** when the latest collection failed. Inspect
+`hl_p2p_tcp_last_success_seconds` separately to diagnose a stalled monitor. With multiple nodes selected,
+the worst state is displayed. Zero sockets does not by itself prove a namespace
+mismatch: the node may have no established P2P connections.
 
 **Coverage:** the exporter polls IPv4 and IPv6 sockets in its own network namespace
-every 15 seconds, selecting connections whose local **or** remote port is 4001 or
+(or the one selected with `--tcp-netns PATH`) every 15 seconds, selecting connections whose local **or** remote port is 4001 or
 4002. This includes accepted client connections and connections our node initiates.
 IPv4-mapped IPv6 addresses are normalized to IPv4. Multiple sockets and both P2P
 ports are summed per IP. The kernel's socket cookie prevents reconnections from
@@ -246,13 +258,25 @@ An exporter restart or per-IP eviction is a normal Prometheus counter reset.
 
 **Limits:** sockets that open and close between polls, the final bytes after a
 socket's last observation, and traffic during exporter downtime can be missed.
+Prometheus cannot infer the initial value of a newly scraped counter series, so
+the first observed bytes for a new IP can also be absent from range increases.
 Prometheus range functions also extrapolate from scrape samples. This measures
 observed client consumption for operations, not exact billing. Downstream clients
 cannot be inferred from TCP byte direction alone: upstream/validator peers are
 also measured; select known client IPs. Shared IPs/NAT aggregate their clients.
 
-Run in the **same network namespace as hl-node**. A Docker bind mount of node data
-is insufficient; a host-based node typically needs a host-networked exporter.
+The collector needs access to the **network namespace of hl-node**. A Docker bind
+mount of node data is insufficient. An exporter on the host can use
+`--per-peer-metrics --tcp-netns /proc/<container-pid>/ns/net` to collect a
+bridge-mode container while its HTTP endpoint stays on the host. This requires
+`CAP_SYS_ADMIN` and access to that namespace file (typically also `CAP_SYS_PTRACE`
+for a non-root service user). Update the path and restart the exporter if the
+container PID changes. There is no Docker daemon integration. Only diagnostic
+socket creation enters the target namespace, on a dedicated locked thread that
+is discarded on exit. Both address-family dumps use the same socket, ensuring a
+single namespace per poll. Invalid paths or namespace-entry failures cause a
+collection error; they never fall back to collecting host sockets. The separate
+TCP connection-state monitor continues to describe the exporter's own namespace.
 The kernel must support `NETLINK_INET_DIAG` and sufficiently recent `TCP_INFO`
 fields (Linux 4.19+); sandbox policies must allow the netlink socket. No external
 `ss` binary or packet capture is used. The monitor idles on non-Linux systems.

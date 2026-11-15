@@ -76,12 +76,18 @@ func main() {
 	infoEndpointURL := startCmd.String("info-endpoint-url", "", "URL the info probe POSTs to (default http://127.0.0.1:3001/info)")
 	enableExtendedMetrics := startCmd.Bool("extended-metrics", false, "Enable the extended monitor set (tcp_lz4, log lines, public IP, Tokio runtime, operator config, tmp dir)")
 	enablePerPeerMetrics := startCmd.Bool("per-peer-metrics", false, "Emit per-IP peer timestamps, gossip counters and Linux TCP payload byte counters (2048-IP cap + 24h idle TTL)")
+	tcpNetworkNamespace := startCmd.String("tcp-netns", "", "Linux network namespace path for TCP byte collection only (requires --per-peer-metrics)")
 
 	switch os.Args[1] {
 	case "start":
 		startCmd.Parse(os.Args[2:])
 	default:
 		fmt.Printf("%q is not a valid command.\n", os.Args[1])
+		os.Exit(1)
+	}
+
+	if *tcpNetworkNamespace != "" && !*enablePerPeerMetrics {
+		fmt.Fprintln(os.Stderr, "--tcp-netns requires --per-peer-metrics")
 		os.Exit(1)
 	}
 
@@ -119,6 +125,7 @@ func main() {
 		InfoEndpointURL:       *infoEndpointURL,
 		EnableExtendedMetrics: *enableExtendedMetrics,
 		EnablePerPeerMetrics:  *enablePerPeerMetrics,
+		TCPNetworkNamespace:   *tcpNetworkNamespace,
 	}
 
 	cfg := config.LoadConfig(flags)

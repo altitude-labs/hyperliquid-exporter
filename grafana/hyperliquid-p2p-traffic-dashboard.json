@@ -31,7 +31,7 @@
     "traffic"
   ],
   "schemaVersion": 41,
-  "version": 1,
+  "version": 3,
   "refresh": "15s",
   "time": {
     "from": "now-6h",
@@ -226,7 +226,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "8 * sum((sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45)))",
+          "expr": "8 * sum(sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval])))",
           "instant": true,
           "legendFormat": "{{env}} {{instance}} / {{ip}}",
           "range": false,
@@ -241,16 +241,20 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "All selected nodes must have completed a full socket dump in the last 45 seconds. Enable --per-peer-metrics on Linux and share the node network namespace. A failure or cardinality overflow marks the collection incomplete.",
+      "description": "Worst latest collection result across selected nodes. Collecting: dump succeeded and contains P2P sockets. No P2P sockets: dump succeeded but found none, possibly because the exporter sees the wrong network namespace or the node has no connected peers. Incomplete: latest collection failed. Missing metrics show Not collecting. No fixed freshness threshold is applied; inspect hl_p2p_tcp_last_success_seconds separately when troubleshooting a stalled monitor.",
       "fieldConfig": {
         "defaults": {
           "mappings": [
             {
               "type": "value",
               "options": {
-                "0": {
+                "-1": {
                   "text": "Incomplete",
                   "color": "red"
+                },
+                "0": {
+                  "text": "No P2P sockets",
+                  "color": "orange"
                 },
                 "1": {
                   "text": "Collecting",
@@ -266,6 +270,10 @@
                 "color": "red"
               },
               {
+                "color": "orange",
+                "value": 0
+              },
+              {
                 "color": "green",
                 "value": 1
               }
@@ -273,7 +281,7 @@
           },
           "unit": "none",
           "decimals": 0,
-          "min": 0,
+          "min": -1,
           "noValue": "Not collecting"
         },
         "overrides": []
@@ -310,7 +318,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "min(hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} * (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < bool 45))",
+          "expr": "min(hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} * (1 + (hl_p2p_tcp_observed_sockets{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} > bool 0)) - 1)",
           "instant": true,
           "legendFormat": "{{env}} {{instance}} / {{ip}}",
           "range": false,
@@ -325,7 +333,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "TCP payload bits/s, viewed from this node. Top 10 series at each timestamp among the selected IPs. Socket counters are sampled every 15 seconds. Failed or stale collection is shown as a gap. Outbound includes retransmitted payload; headers and pure ACKs are excluded.",
+      "description": "TCP payload bits/s, viewed from this node. Top 10 series at each timestamp among the selected IPs. Socket counters are sampled every 15 seconds. Check TCP collection for failed polls; rates reflect observed counter updates. Outbound includes retransmitted payload; headers and pure ACKs are excluded.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -413,7 +421,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "topk(10, 8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45)))",
+          "expr": "topk(10, 8 * sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval])))",
           "instant": false,
           "legendFormat": "{{env}} {{instance}} / {{ip}}",
           "range": true,
@@ -428,7 +436,7 @@
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
-      "description": "TCP payload bits/s, viewed from this node. Top 10 series at each timestamp among the selected IPs. Socket counters are sampled every 15 seconds. Failed or stale collection is shown as a gap. Outbound includes retransmitted payload; headers and pure ACKs are excluded.",
+      "description": "TCP payload bits/s, viewed from this node. Top 10 series at each timestamp among the selected IPs. Socket counters are sampled every 15 seconds. Check TCP collection for failed polls; rates reflect observed counter updates. Outbound includes retransmitted payload; headers and pure ACKs are excluded.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -516,7 +524,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "topk(10, 8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45)))",
+          "expr": "topk(10, 8 * sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__rate_interval])))",
           "instant": false,
           "legendFormat": "{{env}} {{instance}} / {{ip}}",
           "range": true,
@@ -631,7 +639,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (peer) (label_join((8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
+          "expr": "sum by (peer) (label_join((8 * sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval]))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
           "instant": true,
           "legendFormat": "{{env}} {{instance}} / {{ip}}",
           "range": false,
@@ -644,7 +652,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (peer) (label_join((8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
+          "expr": "sum by (peer) (label_join((8 * sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__rate_interval]))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
           "instant": true,
           "legendFormat": "{{env}} {{instance}} / {{ip}}",
           "range": false,
@@ -728,7 +736,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Observed TCP payload, sampled every 15 seconds.** Includes connections with local or remote port 4001/4002, IPv4 and IPv6, in the exporter network namespace. Outbound includes payload retransmissions; inbound uses kernel received bytes. Network headers and pure ACKs are excluded.\n\nCounters begin when collection starts. Connections that open and close between polls, and bytes after the final socket observation, can be missed. Range volumes are Prometheus estimates from observed counters, suitable for operations rather than billing. No data: enable `--per-peer-metrics` on Linux in the same network namespace as the node; allow at least two Prometheus scrapes for rates."
+        "content": "**Observed TCP payload, sampled every 15 seconds.** Includes connections with local or remote port 4001/4002, IPv4 and IPv6, in the exporter network namespace (or the namespace selected with `--tcp-netns`). Outbound includes payload retransmissions; inbound uses kernel received bytes. Network headers and pure ACKs are excluded.\n\nCounters begin when collection starts. Connections that open and close between polls, and bytes after the final socket observation, can be missed. Range volumes are Prometheus estimates from observed counters, suitable for operations rather than billing. No data: enable `--per-peer-metrics` on Linux with access to the node network namespace; allow at least two Prometheus scrapes for rates. A successful dump with zero visible sockets shows **No P2P sockets**. For a node in Docker bridge mode, the exporter must access the node container network namespace; being on the same Docker network does not expose its sockets."
       },
       "pluginVersion": "12.0.2"
     }

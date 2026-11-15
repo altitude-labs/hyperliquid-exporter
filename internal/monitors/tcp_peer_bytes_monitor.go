@@ -120,7 +120,7 @@ func StartTCPPeerBytesMonitor(ctx context.Context, cfg config.Config, errCh chan
 	ticker := time.NewTicker(tcpPeerBytesInterval)
 	defer ticker.Stop()
 	for {
-		samples, err := readP2PTCPSockets()
+		samples, err := readP2PTCPSockets(cfg.TCPNetworkNamespace)
 		if errors.Is(err, errTCPSocketStatsUnsupported) {
 			logger.InfoComponent("tcp_peer_bytes", "%v; monitor idle", err)
 			<-ctx.Done()
@@ -136,6 +136,7 @@ func StartTCPPeerBytesMonitor(ctx context.Context, cfg config.Config, errCh chan
 			default:
 			}
 		} else {
+			metrics.HLP2PTCPObservedSockets.Set(float64(len(samples)))
 			metrics.HLP2PTCPCollectionSuccess.Set(1)
 			metrics.HLP2PTCPLastSuccessSeconds.Set(float64(time.Now().Unix()))
 			metrics.MarkMonitorTick("tcp_peer_bytes")

@@ -148,6 +148,10 @@ var (
 		Name: "hl_p2p_tcp_last_success_seconds",
 		Help: "Unix time of the last successful complete P2P TCP byte dump.",
 	})
+	HLP2PTCPObservedSockets = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_p2p_tcp_observed_sockets",
+		Help: "Number of P2P sockets with TCP byte counters in the latest successful dump. Zero can indicate a network namespace mismatch or no active P2P connections.",
+	})
 )
 
 // TCP-traffic metrics (from internal/monitors/tcp_traffic_monitor.go).

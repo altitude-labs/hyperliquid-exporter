@@ -2,6 +2,6 @@
 
 package monitors
 
-func readP2PTCPSockets() ([]tcpSocketSample, error) {
+func readP2PTCPSockets(namespace string) ([]tcpSocketSample, error) {
 	return nil, errTCPSocketStatsUnsupported
 }

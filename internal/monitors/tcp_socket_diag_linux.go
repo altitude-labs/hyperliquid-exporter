@@ -6,16 +6,22 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"runtime"
 	"syscall"
 	"time"
 
 	"golang.org/x/sys/unix"
 )
 
-func readP2PTCPSockets() ([]tcpSocketSample, error) {
+func readP2PTCPSockets(namespace string) ([]tcpSocketSample, error) {
+	fd, err := openTCPDiagSocket(namespace)
+	if err != nil {
+		return nil, err // Never silently fall back to host sockets.
+	}
+	defer unix.Close(fd)
 	var samples []tcpSocketSample
 	for _, family := range []uint8{linuxAFInet, linuxAFInet6} {
-		rows, err := dumpP2PTCPSockets(family)
+		rows, err := dumpP2PTCPSocketsOnSocket(fd, family)
 		if family == linuxAFInet6 && (errors.Is(err, unix.EAFNOSUPPORT) || errors.Is(err, unix.EPROTONOSUPPORT)) {
 			continue // IPv6 disabled on this host.
 		}
@@ -31,18 +37,67 @@ func readP2PTCPSockets() ([]tcpSocketSample, error) {
 }
 
 func dumpP2PTCPSockets(family uint8) ([]tcpSocketSample, error) {
-	fd, err := unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, unix.NETLINK_INET_DIAG)
+	fd, err := openTCPDiagSocket("")
 	if err != nil {
-		return nil, fmt.Errorf("open inet_diag: %w", err)
-	}
-	defer unix.Close(fd)
-	if err := unix.Bind(fd, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
-		return nil, fmt.Errorf("bind inet_diag: %w", err)
-	}
-	if err := unix.SetsockoptTimeval(fd, unix.SOL_SOCKET, unix.SO_RCVTIMEO, &unix.Timeval{Sec: 2}); err != nil {
 		return nil, err
 	}
+	defer unix.Close(fd)
+	return dumpP2PTCPSocketsOnSocket(fd, family)
+}
 
+// A socket keeps the namespace in which it was created. Only socket creation
+// enters the target namespace; all dump IO can then run on the normal thread.
+func openTCPDiagSocket(namespace string) (int, error) {
+	var fd int
+	var err error
+	if namespace == "" {
+		fd, err = unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, unix.NETLINK_INET_DIAG)
+	} else {
+		fd, err = openNamespacedTCPDiagSocket(namespace)
+	}
+	if err != nil {
+		return -1, fmt.Errorf("open inet_diag: %w", err)
+	}
+	if err := unix.Bind(fd, &unix.SockaddrNetlink{Family: unix.AF_NETLINK}); err != nil {
+		unix.Close(fd)
+		return -1, fmt.Errorf("bind inet_diag: %w", err)
+	}
+	if err := unix.SetsockoptTimeval(fd, unix.SOL_SOCKET, unix.SO_RCVTIMEO, &unix.Timeval{Sec: 2}); err != nil {
+		unix.Close(fd)
+		return -1, err
+	}
+	return fd, nil
+}
+
+func openNamespacedTCPDiagSocket(namespace string) (int, error) {
+	nsFD, err := unix.Open(namespace, unix.O_RDONLY|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return -1, fmt.Errorf("open TCP network namespace %q: %w", namespace, err)
+	}
+	type result struct {
+		fd  int
+		err error
+	}
+	ch := make(chan result, 1)
+	goSafe("tcp_peer_bytes", func() {
+		// Intentionally never unlock this worker. Go destroys a locked thread
+		// when its goroutine exits, so a target namespace cannot leak into the
+		// runtime pool, even on a panic or failure to restore a host namespace.
+		runtime.LockOSThread()
+		defer unix.Close(nsFD)
+		r := result{-1, fmt.Errorf("TCP namespace socket worker did not complete")}
+		defer func() { ch <- r }()
+		if err := unix.Setns(nsFD, unix.CLONE_NEWNET); err != nil {
+			r.err = fmt.Errorf("enter TCP network namespace %q: %w (requires CAP_SYS_ADMIN and namespace file access)", namespace, err)
+			return
+		}
+		r.fd, r.err = unix.Socket(unix.AF_NETLINK, unix.SOCK_RAW|unix.SOCK_CLOEXEC, unix.NETLINK_INET_DIAG)
+	})
+	r := <-ch
+	return r.fd, r.err
+}
+
+func dumpP2PTCPSocketsOnSocket(fd int, family uint8) ([]tcpSocketSample, error) {
 	// nlmsghdr + inet_diag_req_v2. Ask for full sockets with TCP_INFO,
 	// excluding listeners, incomplete handshakes and TIME_WAIT entries.
 	// FIN_WAIT2 can also be a timewait mini-socket without TCP_INFO.
@@ -51,7 +106,7 @@ func dumpP2PTCPSockets(family uint8) ([]tcpSocketSample, error) {
 	binary.NativeEndian.PutUint32(request[0:4], uint32(len(request)))
 	binary.NativeEndian.PutUint16(request[4:6], sockDiagByFamily)
 	binary.NativeEndian.PutUint16(request[6:8], unix.NLM_F_REQUEST|unix.NLM_F_DUMP)
-	binary.NativeEndian.PutUint32(request[8:12], 1)
+	binary.NativeEndian.PutUint32(request[8:12], uint32(family))
 	request[16] = family
 	request[17] = unix.IPPROTO_TCP
 	request[18] = 1 << (inetDiagInfo - 1)
@@ -83,7 +138,7 @@ func dumpP2PTCPSockets(family uint8) ([]tcpSocketSample, error) {
 			return nil, err
 		}
 		for _, msg := range messages {
-			if msg.Header.Seq != 1 || msg.Header.Flags&unix.NLM_F_DUMP_INTR != 0 {
+			if msg.Header.Seq != uint32(family) || msg.Header.Flags&unix.NLM_F_DUMP_INTR != 0 {
 				return nil, fmt.Errorf("interrupted or mismatched inet_diag dump")
 			}
 			switch msg.Header.Type {

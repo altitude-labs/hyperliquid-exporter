@@ -25,6 +25,7 @@ OPTIONS:
   --probe-info-endpoint     # Active HTTP probe of --serve-info
   --extended-metrics        # Extra monitors (lz4, logs, RocksDB, etc.)
   --per-peer-metrics        # Per-IP timestamps, gossip counters and Linux TCP payload bytes
+  --tcp-netns PATH          # Optional target network namespace for TCP payload collection
   --skip-version-check      # For containerized deployments
   --skip-update-check       # For containerized deployments
   --otlp                    # Enable OTLP export (requires --alias and --otlp-endpoint)
@@ -50,11 +51,13 @@ The dashboard shows inbound/outbound TCP payload throughput, observed volumes
 over the selected time range, and collection health. It uses real byte counters
 from Linux `TCP_INFO`, independently of the unitless `hl_p2p_peer_traffic` metric.
 
-The exporter must share the node's **network namespace**. For a host-based node,
-run the exporter on the host, or use Docker `network_mode: host` (remove `ports:`
-in that mode). A read-only mount of the node's files alone does not expose its
-sockets. Linux must provide `NETLINK_INET_DIAG` and `TCP_INFO` byte fields
-(Linux 4.19+); no packet-capture capability or root access is normally needed.
+The TCP collector must access the node's **network namespace**. For a host-based
+node, run the exporter on the host, or use Docker `network_mode: host`. For an
+exporter on the host and a node in a bridge container, use `--tcp-netns` as below.
+A read-only mount of the node's files alone does not expose its sockets. Linux
+must provide `NETLINK_INET_DIAG` and `TCP_INFO` byte fields (Linux 4.19+).
+Collection in the exporter's own namespace normally needs no root access;
+entering another namespace requires additional privileges.
 
 Collection samples connections with local or remote port 4001/4002 every 15
 seconds and aggregates all sockets by remote IP. `in` and `out` mean bytes
@@ -66,6 +69,92 @@ Existing socket totals are baselined at startup. Connections that open and close
 between polls, and final bytes after the last sample, can be missed. Volumes are
 operational estimates from observed counters, not billing-grade accounting.
 See [metric coverage and queries](docs/metrics.md#p2p-tcp-payload-by-peer-ip).
+
+#### When hl-node runs in Docker
+
+First check its network mode (replace `hl-node` with the actual container name):
+
+```bash
+docker inspect --format '{{.HostConfig.NetworkMode}}' hl-node
+```
+
+**Exporter running on the host:** for a bridge-mode node, obtain its current PID:
+
+```bash
+docker inspect --format '{{.State.Pid}}' hl-node
+```
+
+For a PID of `1605`, append these flags to the existing exporter command
+(`ExecStart` for systemd), preserving all its other options:
+
+```text
+--per-peer-metrics --tcp-netns /proc/1605/ns/net
+```
+
+Only the diagnostic socket is opened in that network namespace. The exporter
+HTTP endpoint stays on the host at its existing address/port; the node can stay
+running. The exporter does not invoke Docker or need access to its daemon.
+If the container restarts and its PID changes, update the path and restart the
+exporter. A missing or inaccessible path fails collection explicitly, without
+falling back to the host's sockets.
+
+The service needs `CAP_SYS_ADMIN` for `setns`, plus permission to open the target
+namespace. For a non-root systemd user reading a root-owned container's namespace,
+`CAP_SYS_PTRACE` is generally also required. Keep the service user and add to its
+`[Service]` configuration:
+
+```ini
+AmbientCapabilities=CAP_SYS_ADMIN CAP_SYS_PTRACE
+CapabilityBoundingSet=CAP_SYS_ADMIN CAP_SYS_PTRACE
+```
+
+Reload systemd and restart **only the exporter** after installing the updated
+binary and editing its command. Service sandbox settings must permit `setns`,
+`AF_NETLINK`, and access to `/proc/<pid>/ns/net`. These are substantial privileges;
+an exporter sharing the node's network namespace is an alternative if they are
+not appropriate for the service. `--tcp-netns` targets TCP **payload bytes only**;
+the existing `/proc` TCP connection-state monitor still describes the exporter's
+own namespace.
+
+**Exporter running in Docker:**
+
+If it reports `host`, an exporter running on the host or with `network_mode: host`
+sees the same sockets. If hl-node has its own namespace (for example a bridge
+network), putting the exporter on the same bridge is not enough. An exporter
+container can share the running node's namespace using:
+
+```yaml
+services:
+  hl_exporter:
+    # Keep the existing image/build, commands and volumes.
+    network_mode: "container:hl-node"
+    # Remove ports: and networks: from the exporter service.
+```
+
+Use `network_mode: "service:hl-node"` instead when `hl-node` is the node's service
+name in the same Compose project. Keep `--per-peer-metrics` in the exporter's
+command. Recreate only the exporter, for example with
+`docker compose up -d --no-deps --force-recreate hl_exporter`; the node can stay
+running. If the node container is recreated later, recreate the exporter too so
+it joins the new namespace.
+
+**Prometheus access changes with the namespace:** the exporter listens on 8086
+inside the node's namespace. Prometheus must reach the node container's address
+on that port (for example its service name on a shared user-defined network).
+The exporter's old published host port is no longer provided. If Prometheus is
+remote and needs a published port, plan that endpoint before changing the
+exporter; adding a new port mapping to the node would require recreating it.
+
+For diagnosis, run the following PromQL queries per instance:
+
+```promql
+hl_p2p_tcp_observed_sockets
+count by (instance) (hl_p2p_tcp_bytes_total)
+```
+
+Collection can succeed with zero visible sockets. The dashboard reports
+**No P2P sockets** in this case; check the network namespace and the node's live
+4001/4002 connections before waiting for throughput graphs.
 
 
 ## `vals` subcommand

@@ -50,10 +50,13 @@ type Config struct {
 	// Useful for deep operator dashboards; off by default to keep the
 	// scrape lean for the median user.
 	EnableExtendedMetrics bool
-	// EnablePerPeerMetrics adds per-IP first/last-seen gauges and gossip
-	// event counters. Cardinality is bounded by a 2048-IP LRU cap and a
+	// EnablePerPeerMetrics adds per-IP timestamps, gossip counters and Linux
+	// TCP payload byte counters. Cardinality is bounded by a 2048-IP cap and a
 	// 24h TTL. Off by default for operators with tight series limits.
 	EnablePerPeerMetrics bool
+	// TCPNetworkNamespace optionally targets another network namespace for
+	// TCP byte collection only; the exporter HTTP server stays on the host.
+	TCPNetworkNamespace string
 }
 
 type Flags struct {
@@ -79,6 +82,7 @@ type Flags struct {
 	InfoEndpointURL       string
 	EnableExtendedMetrics bool
 	EnablePerPeerMetrics  bool
+	TCPNetworkNamespace   string
 }
 
 // load env vars and returns a Config struct
@@ -135,6 +139,7 @@ func LoadConfig(flags *Flags) Config {
 		InfoEndpointURL:        flags.InfoEndpointURL,
 		EnableExtendedMetrics:  flags.EnableExtendedMetrics,
 		EnablePerPeerMetrics:   flags.EnablePerPeerMetrics,
+		TCPNetworkNamespace:    flags.TCPNetworkNamespace,
 	}
 
 	// override with flags if they're provided
