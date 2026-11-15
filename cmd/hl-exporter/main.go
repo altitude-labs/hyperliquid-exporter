@@ -75,7 +75,7 @@ func main() {
 	probeInfoEndpoint := startCmd.Bool("probe-info-endpoint", false, "Actively HTTP-probe the node's --serve-info endpoint as a liveness check")
 	infoEndpointURL := startCmd.String("info-endpoint-url", "", "URL the info probe POSTs to (default http://127.0.0.1:3001/info)")
 	enableExtendedMetrics := startCmd.Bool("extended-metrics", false, "Enable the extended monitor set (tcp_lz4, log lines, public IP, Tokio runtime, operator config, tmp dir)")
-	enablePerPeerMetrics := startCmd.Bool("per-peer-metrics", false, "Emit per-IP peer timestamps and gossip event counters (2048-IP LRU cap + 24h TTL)")
+	enablePerPeerMetrics := startCmd.Bool("per-peer-metrics", false, "Emit per-IP peer timestamps, gossip counters and Linux TCP payload byte counters (2048-IP cap + 24h idle TTL)")
 
 	switch os.Args[1] {
 	case "start":

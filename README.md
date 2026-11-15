@@ -24,7 +24,7 @@ OPTIONS:
   --metrics-port N          # Prometheus port (default 8086)
   --probe-info-endpoint     # Active HTTP probe of --serve-info
   --extended-metrics        # Extra monitors (lz4, logs, RocksDB, etc.)
-  --per-peer-metrics        # Per-IP peer timestamps + gossip event counters (LRU 2048, 24h TTL)
+  --per-peer-metrics        # Per-IP timestamps, gossip counters and Linux TCP payload bytes
   --skip-version-check      # For containerized deployments
   --skip-update-check       # For containerized deployments
   --otlp                    # Enable OTLP export (requires --alias and --otlp-endpoint)
@@ -40,6 +40,32 @@ By default, the exporter:
 - Auto-detects optional data sources such as `data/mempool_txs/hourly/` when `split_client_blocks` is enabled
 - Uses `info` log level
 - Disables OTLP export
+
+### P2P client traffic
+
+Run the exporter with `--per-peer-metrics` on Linux and import
+[`grafana/hyperliquid-p2p-traffic-dashboard.json`](grafana/hyperliquid-p2p-traffic-dashboard.json)
+into Grafana. Select the Prometheus datasource, environment, node and peer IPs.
+The dashboard shows inbound/outbound TCP payload throughput, observed volumes
+over the selected time range, and collection health. It uses real byte counters
+from Linux `TCP_INFO`, independently of the unitless `hl_p2p_peer_traffic` metric.
+
+The exporter must share the node's **network namespace**. For a host-based node,
+run the exporter on the host, or use Docker `network_mode: host` (remove `ports:`
+in that mode). A read-only mount of the node's files alone does not expose its
+sockets. Linux must provide `NETLINK_INET_DIAG` and `TCP_INFO` byte fields
+(Linux 4.19+); no packet-capture capability or root access is normally needed.
+
+Collection samples connections with local or remote port 4001/4002 every 15
+seconds and aggregates all sockets by remote IP. `in` and `out` mean bytes
+received/sent by our node, regardless of who initiated the connection. These
+metrics do not automatically distinguish downstream clients from upstream or
+validator peers; select the relevant client IPs to measure their consumption.
+Headers and pure ACKs are excluded; outbound payload retransmissions are included.
+Existing socket totals are baselined at startup. Connections that open and close
+between polls, and final bytes after the last sample, can be missed. Volumes are
+operational estimates from observed counters, not billing-grade accounting.
+See [metric coverage and queries](docs/metrics.md#p2p-tcp-payload-by-peer-ip).
 
 
 ## `vals` subcommand

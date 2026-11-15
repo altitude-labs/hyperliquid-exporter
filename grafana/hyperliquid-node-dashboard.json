@@ -464,7 +464,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "max(time() - hl_core_latest_block_time{env=~\"$env\", instance=~\"$instance\"})",
+          "expr": "max(time() - (hl_core_latest_block_time{env=~\"$env\", instance=~\"$instance\"} > 0))",
           "instant": true,
           "legendFormat": "value",
           "range": false,
@@ -535,7 +535,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "max(time() - hl_evm_latest_block_time{env=~\"$env\", instance=~\"$instance\"})",
+          "expr": "max(time() - (hl_evm_latest_block_time{env=~\"$env\", instance=~\"$instance\"} > 0))",
           "instant": true,
           "legendFormat": "value",
           "range": false,
@@ -1109,7 +1109,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "time() - hl_core_latest_block_time{env=~\"$env\", instance=~\"$instance\"}",
+          "expr": "time() - (hl_core_latest_block_time{env=~\"$env\", instance=~\"$instance\"} > 0)",
           "instant": false,
           "legendFormat": "{{instance}} core block",
           "range": true,
@@ -1121,7 +1121,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "time() - hl_evm_latest_block_time{env=~\"$env\", instance=~\"$instance\"}",
+          "expr": "time() - (hl_evm_latest_block_time{env=~\"$env\", instance=~\"$instance\"} > 0)",
           "instant": false,
           "legendFormat": "{{instance}} evm block",
           "range": true,
@@ -3068,7 +3068,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "bottomk(50, time() - hl_p2p_peer_last_seen_seconds{env=~\"$env\", instance=~\"$instance\"})",
+          "expr": "bottomk(50, time() - (hl_p2p_peer_last_seen_seconds{env=~\"$env\", instance=~\"$instance\"} > 0))",
           "format": "table",
           "instant": true,
           "legendFormat": "{{instance}} {{ip}}",
@@ -5959,7 +5959,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "time() - hl_node_replay_last_seconds{env=~\"$env\", instance=~\"$instance\"}",
+          "expr": "time() - (hl_node_replay_last_seconds{env=~\"$env\", instance=~\"$instance\"} > 0)",
           "instant": false,
           "legendFormat": "{{instance}} replay age",
           "range": true,
@@ -6083,7 +6083,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "topk(30, time() - hl_exporter_monitor_last_tick_seconds{env=~\"$env\", instance=~\"$instance\"})",
+          "expr": "topk(30, time() - (hl_exporter_monitor_last_tick_seconds{env=~\"$env\", instance=~\"$instance\"} > 0))",
           "instant": false,
           "legendFormat": "{{instance}} {{monitor}}",
           "range": true,
@@ -6440,7 +6440,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "time() - hl_info_endpoint_last_success_seconds{env=~\"$env\", instance=~\"$instance\"}",
+          "expr": "time() - (hl_info_endpoint_last_success_seconds{env=~\"$env\", instance=~\"$instance\"} > 0)",
           "instant": false,
           "legendFormat": "{{instance}} last success age",
           "range": true,

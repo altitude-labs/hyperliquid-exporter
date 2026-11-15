@@ -1,0 +1,811 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "timepicker": {},
+  "timezone": "browser",
+  "weekStart": "",
+  "id": null,
+  "uid": "hyperliquid-p2p-traffic",
+  "title": "Hyperliquid P2P Traffic",
+  "description": "Observed inbound and outbound TCP payload by peer IP, with range volumes and collector coverage. Requires Linux and --per-peer-metrics.",
+  "tags": [
+    "hyperliquid",
+    "p2p",
+    "traffic"
+  ],
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Observed TCP payload for selected nodes and peer IPs. Counters begin at collection startup; bytes missed between polls are excluded.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          },
+          "unit": "bytes",
+          "decimals": 2,
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum by (env, instance, ip) (increase(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__range])))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Sent to peers · selected range",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Observed TCP payload for selected nodes and peer IPs. Counters begin at collection startup; bytes missed between polls are excluded.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          },
+          "unit": "bytes",
+          "decimals": 2,
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum(sum by (env, instance, ip) (increase(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__range])))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Received from peers · selected range",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "Observed TCP payload for selected nodes and peer IPs. Counters begin at collection startup; bytes missed between polls are excluded.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue"
+              }
+            ]
+          },
+          "unit": "bps",
+          "decimals": 2,
+          "min": 0,
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "8 * sum((sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45)))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Outbound · current",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "All selected nodes must have completed a full socket dump in the last 45 seconds. Enable --per-peer-metrics on Linux and share the node network namespace. A failure or cardinality overflow marks the collection incomplete.",
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Incomplete",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "Collecting",
+                  "color": "green"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red"
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "Not collecting"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "min(hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} * (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < bool 45))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "TCP collection",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "TCP payload bits/s, viewed from this node. Top 10 series at each timestamp among the selected IPs. Socket counters are sampled every 15 seconds. Failed or stale collection is shown as a gap. Outbound includes retransmitted payload; headers and pure ACKs are excluded.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "TCP payload",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "bps",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, 8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45)))",
+          "instant": false,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Sent to peers · top 10 by throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "TCP payload bits/s, viewed from this node. Top 10 series at each timestamp among the selected IPs. Socket counters are sampled every 15 seconds. Failed or stale collection is shown as a gap. Outbound includes retransmitted payload; headers and pure ACKs are excluded.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "TCP payload",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 5,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 1,
+            "pointSize": 4,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "bps",
+          "noValue": "No data"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "sortBy": "Last *",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "topk(10, 8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45)))",
+          "instant": false,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Received from peers · top 10 by throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "description": "One row per environment / node / peer IP, aggregating all sockets on ports 4001 and 4002. Volumes are observed payload over the dashboard time range, not lifetime source totals. Use Peer IP to inspect any tracked peer. Inbound and outbound describe byte direction, not who initiated the connection or whether the peer is a downstream client.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              }
+            ]
+          },
+          "unit": "bytes",
+          "decimals": 2,
+          "noValue": "No data"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Environment / node / peer IP"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "string"
+              },
+              {
+                "id": "custom.width",
+                "value": 440
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Outbound"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Inbound"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bps"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 11,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Sent · selected range"
+          }
+        ]
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (peer) (label_join((8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "A",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (peer) (label_join((8 * (sum by (env, instance, ip) (rate(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__rate_interval]))) and on (env, instance) ((hl_p2p_tcp_collection_success{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} == 1) and on (env, instance) (time() - hl_p2p_tcp_last_success_seconds{env=~\"${env:regex}\", instance=~\"${instance:regex}\"} < 45))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "B",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (peer) (label_join((sum by (env, instance, ip) (increase(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"out\"}[$__range]))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "C",
+          "format": "table"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (peer) (label_join((sum by (env, instance, ip) (increase(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\", ip=~\"${peer_ip:regex}\", direction=\"in\"}[$__range]))), \"peer\", \" / \", \"env\", \"instance\", \"ip\"))",
+          "instant": true,
+          "legendFormat": "{{env}} {{instance}} / {{ip}}",
+          "range": false,
+          "refId": "D",
+          "format": "table"
+        }
+      ],
+      "title": "Traffic by peer IP",
+      "type": "table",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "peer",
+            "mode": "outerTabular"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true
+            },
+            "indexByName": {
+              "peer": 0,
+              "Value #A": 1,
+              "Value #B": 2,
+              "Value #C": 3,
+              "Value #D": 4
+            },
+            "renameByName": {
+              "peer": "Environment / node / peer IP",
+              "Value #A": "Outbound",
+              "Value #B": "Inbound",
+              "Value #C": "Sent · selected range",
+              "Value #D": "Received · selected range"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "text",
+      "title": "Measurement coverage",
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Observed TCP payload, sampled every 15 seconds.** Includes connections with local or remote port 4001/4002, IPv4 and IPv6, in the exporter network namespace. Outbound includes payload retransmissions; inbound uses kernel received bytes. Network headers and pure ACKs are excluded.\n\nCounters begin when collection starts. Connections that open and close between polls, and bytes after the final socket observation, can be missed. Range volumes are Prometheus estimates from observed counters, suitable for operations rather than billing. No data: enable `--per-peer-metrics` on Linux in the same network namespace as the node; allow at least two Prometheus scrapes for rates."
+      },
+      "pluginVersion": "12.0.2"
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "label": "Datasource",
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(hl_exporter_ready, env)",
+        "includeAll": true,
+        "label": "Environment",
+        "multi": true,
+        "name": "env",
+        "options": [],
+        "query": "label_values(hl_exporter_ready, env)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "definition": "label_values(hl_exporter_ready{env=~\"${env:regex}\"}, instance)",
+        "includeAll": true,
+        "label": "Instance",
+        "multi": true,
+        "name": "instance",
+        "options": [],
+        "query": "label_values(hl_exporter_ready{env=~\"${env:regex}\"}, instance)",
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "name": "peer_ip",
+        "label": "Peer IP",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${DS_PROMETHEUS}"
+        },
+        "query": "label_values(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\"}, ip)",
+        "definition": "label_values(hl_p2p_tcp_bytes_total{env=~\"${env:regex}\", instance=~\"${instance:regex}\"}, ip)",
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "regex": ""
+      }
+    ]
+  }
+}

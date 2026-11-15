@@ -52,6 +52,7 @@ func Start(ctx context.Context, cfg config.Config) {
 	operatorConfigErrCh := make(chan error, 1)
 	tmpDirErrCh := make(chan error, 1)
 	tcpConnectionsErrCh := make(chan error, 1)
+	tcpPeerBytesErrCh := make(chan error, 1)
 	replicaRunsErrCh := make(chan error, 1)
 	rocksDBErrCh := make(chan error, 1)
 	subsystemStepsErrCh := make(chan error, 1)
@@ -187,6 +188,11 @@ func Start(ctx context.Context, cfg config.Config) {
 
 	logger.InfoComponent("tcp_connections", "Initializing TCP-connections monitor...")
 	runMonitor("tcp_connections", func() { monitors.StartTCPConnectionsMonitor(monitorCtx, cfg, tcpConnectionsErrCh) })
+
+	if cfg.EnablePerPeerMetrics {
+		logger.InfoComponent("tcp_peer_bytes", "Initializing per-peer TCP payload byte monitor...")
+		runMonitor("tcp_peer_bytes", func() { monitors.StartTCPPeerBytesMonitor(monitorCtx, cfg, tcpPeerBytesErrCh) })
+	}
 
 	logger.InfoComponent("replica_runs", "Initializing replica-runs monitor...")
 	runMonitor("replica_runs", func() { monitors.StartReplicaRunsMonitor(monitorCtx, cfg, replicaRunsErrCh) })
@@ -372,6 +378,9 @@ func Start(ctx context.Context, cfg config.Config) {
 		case err := <-tcpConnectionsErrCh:
 			metrics.IncMonitorError("tcp_connections")
 			logger.ErrorComponent("tcp_connections", "tcp-connections monitor error: %v", err)
+		case err := <-tcpPeerBytesErrCh:
+			metrics.IncMonitorError("tcp_peer_bytes")
+			logger.ErrorComponent("tcp_peer_bytes", "per-peer TCP byte monitor error: %v", err)
 		case err := <-replicaRunsErrCh:
 			metrics.IncMonitorError("replica_runs")
 			logger.ErrorComponent("replica_runs", "replica-runs monitor error: %v", err)

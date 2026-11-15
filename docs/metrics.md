@@ -1,6 +1,6 @@
 # Hyperliquid Exporter Metrics Reference
 
-> **Legend - `_total` on Gauge-typed metrics:** Gauge-typed metrics whose names end in `_total` are cumulative-since-source-restart snapshots (or current counts), NOT Prometheus counters: they reset to 0 when the source process (hl-node/hl-visor) or the exporter restarts, and some are point-in-time counts that can DECREASE. Do not apply `rate()`/`increase()` to them; use the raw value, or `delta()`/`changes()` with awareness of resets. True counters (correctly consumed with `rate()`) include `hl_info_endpoint_failures_total`, `hl_node_parent_peer_switches_total`, the `hl_p2p_gossip_*_total` event counters, `hl_node_public_ip_changes_total`, `hl_mempool_events_total`, and the `hl_mempool_txs_*_total` counters.
+> **Legend - `_total` on Gauge-typed metrics:** Gauge-typed metrics whose names end in `_total` are cumulative-since-source-restart snapshots (or current counts), NOT Prometheus counters: they reset to 0 when the source process (hl-node/hl-visor) or the exporter restarts, and some are point-in-time counts that can DECREASE. Do not apply `rate()`/`increase()` to them; use the raw value, or `delta()`/`changes()` with awareness of resets. True counters (correctly consumed with `rate()`) include `hl_p2p_tcp_bytes_total`, `hl_info_endpoint_failures_total`, `hl_node_parent_peer_switches_total`, the `hl_p2p_gossip_*_total` event counters, `hl_node_public_ip_changes_total`, `hl_mempool_events_total`, and the `hl_mempool_txs_*_total` counters.
 
 ## HyperCore Metrics
 
@@ -192,8 +192,70 @@ These expose node-precomputed per-node quantiles as gauges with no `_bucket` ser
 | `hl_p2p_gossip_peer_events_total` | Counter | `ip`, `event_type` | Gossip events attributed to a structured remote IP | `--per-peer-metrics` |
 | `hl_p2p_gossip_events_unattributed_total` | Counter | `event_type` | Gossip events whose structured payload did not contain a valid remote IP | - |
 | `hl_p2p_tcp_connections` | Gauge | `port`, `state` | TCP state counts per listening port | Linux only |
+| `hl_p2p_tcp_bytes_total` | Counter | `ip`, `direction` | Observed TCP payload bytes since collection baseline, summed across P2P sockets by remote IP | Linux, `--per-peer-metrics` |
+| `hl_p2p_tcp_collection_success` | Gauge | - | Whether the latest complete TCP byte collection succeeded (1/0) | Linux, `--per-peer-metrics` |
+| `hl_p2p_tcp_last_success_seconds` | Gauge | - | Unix timestamp of the latest successful complete TCP byte collection | Linux, `--per-peer-metrics` |
 
 `hl_p2p_gossip_peer_events_total` accepts only the bounded `event_type` allowlist documented by the exporter; unknown tags use `event_type="other"`. Active IPs are limited to 2048 with a 24-hour TTL. Evicting an IP deletes its active series, so a later reappearance is a normal counter reset that `rate()` and `increase()` handle. The parser accepts structured `Ip`, `ip`, `remote_ip`, and similar `*_ip` fields, but deliberately does not extract addresses from free-form error strings. Use Loki for exact event payloads and sub-scrape timing.
+
+### P2P TCP payload by peer IP
+
+`hl_p2p_tcp_bytes_total` is a **true Prometheus counter** derived from per-socket
+Linux `TCP_INFO` byte totals. Use `rate()` for bytes/s and `increase()` for observed
+range volumes. This is independent of the unitless `tcp_traffic` source and the
+LZ4 source gauges. Example Grafana queries:
+
+```promql
+# Outbound payload in bits/s, per node and remote IP.
+8 * sum by (env, instance, ip) (
+  rate(hl_p2p_tcp_bytes_total{direction="out"}[$__rate_interval])
+)
+
+# Inbound payload volume over the selected dashboard range, in bytes.
+sum by (env, instance, ip) (
+  increase(hl_p2p_tcp_bytes_total{direction="in"}[$__range])
+)
+```
+
+The standalone `grafana/hyperliquid-p2p-traffic-dashboard.json` includes throughput
+curves, range volumes, a joined per-IP table and collection health. Failed or
+stale collection is shown as a gap in throughput curves, rather than a misleading
+zero. Configure Prometheus to scrape at approximately 15 seconds; allow at least
+two scrapes before expecting a rate.
+
+**Coverage:** the exporter polls IPv4 and IPv6 sockets in its own network namespace
+every 15 seconds, selecting connections whose local **or** remote port is 4001 or
+4002. This includes accepted client connections and connections our node initiates.
+IPv4-mapped IPv6 addresses are normalized to IPv4. Multiple sockets and both P2P
+ports are summed per IP. The kernel's socket cookie prevents reconnections from
+resetting a peer's cumulative exporter counter. `direction="out"` uses
+`tcpi_bytes_sent` (including retransmitted payload); `direction="in"` uses
+`tcpi_bytes_received`. TCP/IP/Ethernet headers and pure ACKs are excluded. These
+are TCP payload bytes, including application framing and any compressed content,
+not uncompressed application data or full interface bandwidth.
+
+The first complete dump establishes the baseline without counting socket traffic
+from before collection startup. New sockets contribute their initially observed
+bytes, and subsequent dumps add only positive deltas. The monitor retains up to
+8192 current sockets and 2048 peer IPs. Disconnected IP counters expire after 24
+hours without a socket observation, or are evicted oldest-first to admit an active
+IP. There is no moving top-N or `ip="other"` bucket. Dumps that exceed an active
+limit, lack required byte fields, or are interrupted/truncated are discarded;
+collection health becomes 0, and the previous baseline is retained for recovery.
+An exporter restart or per-IP eviction is a normal Prometheus counter reset.
+
+**Limits:** sockets that open and close between polls, the final bytes after a
+socket's last observation, and traffic during exporter downtime can be missed.
+Prometheus range functions also extrapolate from scrape samples. This measures
+observed client consumption for operations, not exact billing. Downstream clients
+cannot be inferred from TCP byte direction alone: upstream/validator peers are
+also measured; select known client IPs. Shared IPs/NAT aggregate their clients.
+
+Run in the **same network namespace as hl-node**. A Docker bind mount of node data
+is insufficient; a host-based node typically needs a host-networked exporter.
+The kernel must support `NETLINK_INET_DIAG` and sufficiently recent `TCP_INFO`
+fields (Linux 4.19+); sandbox policies must allow the netlink socket. No external
+`ss` binary or packet capture is used. The monitor idles on non-Linux systems.
 
 Examples:
 
@@ -462,6 +524,7 @@ Bundle: LZ4, per-step latency (bucket_guard + tcp_lz4, plus validator-only conse
 ### Linux-only
 - All `hl_node_process_*`
 - `hl_p2p_tcp_connections`
+- `hl_p2p_tcp_bytes_total`, `hl_p2p_tcp_collection_success`, `hl_p2p_tcp_last_success_seconds` (`--per-peer-metrics`)
 
 ### Flag-gated metric default values
 Metrics gated by `--probe-info-endpoint` or `--extended-metrics` still appear at zero when the flag is off (standard `promauto` behavior). See [UPGRADING.md](../UPGRADING.md).

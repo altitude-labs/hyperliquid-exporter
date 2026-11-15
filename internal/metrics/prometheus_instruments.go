@@ -134,6 +134,22 @@ var (
 	}, []string{"source"})
 )
 
+// Kernel TCP payload counters, opt-in with --per-peer-metrics on Linux.
+var (
+	HLP2PTCPBytesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "hl_p2p_tcp_bytes_total",
+		Help: "Observed TCP payload bytes on P2P ports 4001/4002 since collection began, by remote IP and direction. Outbound includes retransmitted payload; inbound is kernel bytes_received. Excludes headers and sockets missed between polls. Active IPs bounded to 2048 with a 24h idle TTL.",
+	}, []string{"ip", "direction"})
+	HLP2PTCPCollectionSuccess = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_p2p_tcp_collection_success",
+		Help: "Whether the last P2P TCP byte dump completed successfully (1=yes, 0=no).",
+	})
+	HLP2PTCPLastSuccessSeconds = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "hl_p2p_tcp_last_success_seconds",
+		Help: "Unix time of the last successful complete P2P TCP byte dump.",
+	})
+)
+
 // TCP-traffic metrics (from internal/monitors/tcp_traffic_monitor.go).
 // Sourced from $NODE_HOME/data/tcp_traffic/hourly. The exporter only
 // publishes the top-N peers per direction plus an "other" bucket, so

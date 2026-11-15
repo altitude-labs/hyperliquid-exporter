@@ -20,6 +20,7 @@ and is launched from `internal/exporter/exporter.go` via `runMonitor("x", func()
   - **Allowlist** (`tokio_runtime_monitor`, `subsystem_latency_monitor`): hardcoded set; new values dropped silently.
   - **Top-N + "other"** (`tcp_traffic_monitor`, `tcp_lz4_monitor`): publish top-N, sum the rest, `Delete()` series that fall out.
   - **TTL eviction** (`consensus_monitor`): track last-seen, periodic housekeeping drops stale entries.
+  - **Socket baseline + idle eviction** (`tcp_peer_bytes_monitor`): opt-in kernel payload counters on Linux, at most 8192 P2P sockets and 2048 IPs, with a 24h idle TTL. Reject partial/overflowing dumps; never replace individual client counters with a changing top-N bucket.
   - For raw order-flow sources such as `mempool_txs`, never label by hash, address, asset, price, order id, cloid, or nonce. Export aggregate counts/histograms only.
 
 - **Cumulative-since-source-start counters** from hl-node reset on the source process restart. Model them as Prometheus gauges, not counters, to avoid regression warnings in `rate()`. See `crit_msg_monitor`, `tokio_runtime_monitor`, `rocksdb_monitor`.
